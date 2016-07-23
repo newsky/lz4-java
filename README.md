@@ -41,10 +41,10 @@ Have a look at LZ4Factory for more information.
    especially if CPU endianness differs, but the compressed streams can be
    safely decompressed by any decompressor implementation on any platform.
 
-# xxhash Java
+# net.jpountz.xxhash Java
 
-xxhash hashing for Java, based on Yann Collet's work available at
-http://code.google.com/p/xxhash/. xxhash is a non-cryptographic, extremly fast
+net.jpountz.xxhash hashing for Java, based on Yann Collet's work available at
+http://code.google.com/p/net.jpountz.xxhash/. net.jpountz.xxhash is a non-cryptographic, extremly fast
 and high-quality ([SMHasher](http://code.google.com/p/smhasher/wiki/SMHasher)
 score of 10) hash function.
 
@@ -68,19 +68,19 @@ You can download released artifacts from [Maven Central](http://repo1.maven.org/
 # Documentation
 
  - [lz4](http://jpountz.github.com/lz4-java/1.1.0/docs/net/jpountz/lz4/package-summary.html)
- - [xxhash](http://jpountz.github.com/lz4-java/1.1.0/docs/net/jpountz/xxhash/package-summary.html)
+ - [net.jpountz.xxhash](http://jpountz.github.com/lz4-java/1.1.0/docs/net/jpountz/net.jpountz.xxhash/package-summary.html)
  - [changelog](http://github.com/jpountz/lz4-java/blob/master/CHANGES.md)
 
 # Performance
 
-Both lz4 and xxhash focus on speed. Although compression, decompression and
+Both lz4 and net.jpountz.xxhash focus on speed. Although compression, decompression and
 hashing performance can depend a lot on the input (there are lies, damn lies
 and benchmarks), here are some benchmarks that try to give a sense of the
 speed at which they compress/decompress/hash bytes.
 
  - [lz4 compression](http://jpountz.github.com/lz4-java/1.1.0/lz4-compression-benchmark/)
  - [lz4 decompression](http://jpountz.github.com/lz4-java/1.1.0/lz4-decompression-benchmark/)
- - [xxhash hashing](http://jpountz.github.com/lz4-java/1.1.0/xxhash-benchmark/)
+ - [net.jpountz.xxhash hashing](http://jpountz.github.com/lz4-java/1.1.0/net.jpountz.xxhash-benchmark/)
 
 # Build
 

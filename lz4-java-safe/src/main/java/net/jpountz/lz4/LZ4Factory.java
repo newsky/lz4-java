@@ -1,4 +1,4 @@
-package net.jpountz.xxhash;
+package net.jpountz.lz4;
 
 /*
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,16 +15,16 @@ package net.jpountz.xxhash;
  */
 
 import java.lang.reflect.Field;
-import java.util.Random;
+import java.util.Arrays;
 
 import net.jpountz.util.Native;
 
 /**
- * Entry point to get {@link XXHash32} and {@link StreamingXXHash32} instances.
+ * Entry point for the LZ4 API.
  * <p>
  * This class has 3 instances<ul>
  * <li>a {@link #nativeInstance() native} instance which is a JNI binding to
- * <a href="http://code.google.com/p/xxhash/">the original LZ4 C implementation</a>.
+ * <a href="http://code.google.com/p/lz4/">the original LZ4 C implementation</a>.
  * <li>a {@link #safeInstance() safe Java} instance which is a pure Java port
  * of the original C library,</li>
  * <li>an {@link #unsafeInstance() unsafe Java} instance which is a Java port
@@ -33,28 +33,29 @@ import net.jpountz.util.Native;
  * <p>
  * Only the {@link #safeInstance() safe instance} is guaranteed to work on your
  * JVM, as a consequence it is advised to use the {@link #fastestInstance()} or
- * {@link #fastestJavaInstance()} to pull a {@link XXHashFactory} instance.
+ * {@link #fastestJavaInstance()} to pull a {@link LZ4Factory} instance.
  * <p>
  * All methods from this class are very costly, so you should get an instance
  * once, and then reuse it whenever possible. This is typically done by storing
- * a {@link XXHashFactory} instance in a static field.
+ * a {@link LZ4Factory} instance in a static field.
  */
-public final class XXHashFactory {
+public final class LZ4Factory {
 
-  private static XXHashFactory instance(String impl) {
+  private static LZ4Factory instance(String impl) {
     try {
-      return new XXHashFactory(impl);
+      return new LZ4Factory(impl);
     } catch (Exception e) {
       throw new AssertionError(e);
     }
   }
 
-  private static XXHashFactory NATIVE_INSTANCE,
-                               JAVA_UNSAFE_INSTANCE,
-                               JAVA_SAFE_INSTANCE;
+  private static LZ4Factory NATIVE_INSTANCE,
+                            JAVA_UNSAFE_INSTANCE,
+                            JAVA_SAFE_INSTANCE;
 
-  /** Return a {@link XXHashFactory} that returns {@link XXHash32} instances that
-   *  are native bindings to the original C API.
+  /**
+   * Return a {@link LZ4Factory} instance that returns compressors and
+   * decompressors that are native bindings to the original C library.
    * <p>
    * Please note that this instance has some traps you should be aware of:<ol>
    * <li>Upon loading this instance, files will be written to the temporary
@@ -70,25 +71,26 @@ public final class XXHashFactory {
    * class loader.
    * </ol>
    */
-  public static synchronized XXHashFactory nativeInstance() {
+  public static synchronized LZ4Factory nativeInstance() {
     if (NATIVE_INSTANCE == null) {
       NATIVE_INSTANCE = instance("JNI");
     }
     return NATIVE_INSTANCE;
   }
 
-  /** Return a {@link XXHashFactory} that returns {@link XXHash32} instances that
-   *  are written with Java's official API. */
-  public static synchronized XXHashFactory safeInstance() {
+  /** Return a {@link LZ4Factory} instance that returns compressors and
+   *  decompressors that are written with Java's official API. */
+  public static synchronized LZ4Factory safeInstance() {
     if (JAVA_SAFE_INSTANCE == null) {
       JAVA_SAFE_INSTANCE = instance("JavaSafe");
     }
     return JAVA_SAFE_INSTANCE;
   }
 
-  /** Return a {@link XXHashFactory} that returns {@link XXHash32} instances that
-   *  may use {@link sun.misc.Unsafe} to speed up hashing. */
-  public static synchronized XXHashFactory unsafeInstance() {
+  /** Return a {@link LZ4Factory} instance that returns compressors and
+   *  decompressors that may use {@link sun.misc.Unsafe} to speed up compression
+   *  and decompression. */
+  public static synchronized LZ4Factory unsafeInstance() {
     if (JAVA_UNSAFE_INSTANCE == null) {
       JAVA_UNSAFE_INSTANCE = instance("JavaUnsafe");
     }
@@ -96,13 +98,13 @@ public final class XXHashFactory {
   }
 
   /**
-   * Return the fastest available {@link XXHashFactory} instance which does not
+   * Return the fastest available {@link LZ4Factory} instance which does not
    * rely on JNI bindings. It first tries to load the
    * {@link #unsafeInstance() unsafe instance}, and then the
    * {@link #safeInstance() safe Java instance} if the JVM doesn't have a
    * working {@link sun.misc.Unsafe}.
    */
-  public static XXHashFactory fastestJavaInstance() {
+  public static LZ4Factory fastestJavaInstance() {
     try {
       return unsafeInstance();
     } catch (Throwable t) {
@@ -111,7 +113,7 @@ public final class XXHashFactory {
   }
 
   /**
-   * Return the fastest available {@link XXHashFactory} instance. If the class
+   * Return the fastest available {@link LZ4Factory} instance. If the class
    * loader is the system class loader and if the
    * {@link #nativeInstance() native instance} loads successfully, then the
    * {@link #nativeInstance() native instance} is returned, otherwise the
@@ -120,7 +122,7 @@ public final class XXHashFactory {
    * Please read {@link #nativeInstance() javadocs of nativeInstance()} before
    * using this method.
    */
-  public static XXHashFactory fastestInstance() {
+  public static LZ4Factory fastestInstance() {
     if (Native.isLoaded()
         || Native.class.getClassLoader() == ClassLoader.getSystemClassLoader()) {
       try {
@@ -141,39 +143,57 @@ public final class XXHashFactory {
   }
 
   private final String impl;
-  private final XXHash32 hash32;
-  private final StreamingXXHash32Factory streamingHash32Factory;
+  private final LZ4Compressor fastCompressor;
+  private final LZ4Compressor highCompressor;
+  private final LZ4Decompressor decompressor;
+  private final LZ4UnknownSizeDecompressor unknownSizeDecompressor;
 
-  private XXHashFactory(String impl) throws ClassNotFoundException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+  private LZ4Factory(String impl) throws ClassNotFoundException, NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
     this.impl = impl;
-    hash32 = classInstance("net.jpountz.net.jpountz.xxhash.XXHash32" + impl);
-    streamingHash32Factory = classInstance("net.jpountz.net.jpountz.xxhash.StreamingXXHash32Factory" + impl);
+    fastCompressor = classInstance("net.jpountz.lz4.LZ4" + impl + "Compressor");
+    highCompressor = classInstance("net.jpountz.lz4.LZ4HC" + impl + "Compressor");
+    decompressor = classInstance("net.jpountz.lz4.LZ4" + impl + "Decompressor");
+    unknownSizeDecompressor = classInstance("net.jpountz.lz4.LZ4" + impl + "UnknownSizeDecompressor");
 
-    // make sure it can run
-    final byte[] bytes = new byte[100];
-    final Random random = new Random();
-    random.nextBytes(bytes);
-    final int seed = random.nextInt();
-
-    final int h1 = hash32.hash(bytes, 0, bytes.length, seed);
-    final StreamingXXHash32 streamingHash32 = newStreamingHash32(seed);
-    streamingHash32.update(bytes, 0, bytes.length);
-    final int h2 = streamingHash32.getValue();
-    if (h1 != h2) {
-      throw new AssertionError();
+    // quickly test that everything works as expected
+    final byte[] original = new byte[] {'a','b','c','d',' ',' ',' ',' ',' ',' ','a','b','c','d','e','f','g','h','i','j'};
+    for (LZ4Compressor compressor : Arrays.asList(fastCompressor, highCompressor)) {
+      final int maxCompressedLength = compressor.maxCompressedLength(original.length);
+      final byte[] compressed = new byte[maxCompressedLength];
+      final int compressedLength = compressor.compress(original, 0, original.length, compressed, 0, maxCompressedLength);
+      final byte[] restored = new byte[original.length];
+      decompressor.decompress(compressed, 0, restored, 0, original.length);
+      if (!Arrays.equals(original, restored)) {
+        throw new AssertionError();
+      }
+      Arrays.fill(restored, (byte) 0);
+      final int decompressedLength = unknownSizeDecompressor.decompress(compressed, 0, compressedLength, restored, 0);
+      if (decompressedLength != original.length || !Arrays.equals(original, restored)) {
+        throw new AssertionError();
+      }
     }
+
   }
 
-  /** Return a {@link XXHash32} instance. */
-  public XXHash32 hash32() {
-    return hash32;
+  /** Return a blazing fast {@link LZ4Compressor}. */
+  public LZ4Compressor fastCompressor() {
+    return fastCompressor;
   }
 
-  /**
-   * Return a new {@link StreamingXXHash32} instance.
-   */
-  public StreamingXXHash32 newStreamingHash32(int seed) {
-    return streamingHash32Factory.newStreamingHash(seed);
+  /** Return a {@link LZ4Compressor} which requires more memory than
+   * {@link #fastCompressor()} and is slower but compresses more efficiently. */
+  public LZ4Compressor highCompressor() {
+    return highCompressor;
+  }
+
+  /** Return a {@link LZ4Decompressor} instance. */
+  public LZ4Decompressor decompressor() {
+    return decompressor;
+  }
+
+  /** Return a {@link LZ4UnknownSizeDecompressor} instance. */
+  public LZ4UnknownSizeDecompressor unknwonSizeDecompressor() {
+    return unknownSizeDecompressor;
   }
 
   /** Prints the fastest instance. */

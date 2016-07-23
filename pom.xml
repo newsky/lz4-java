@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>lz4</artifactId>
+  <groupId>com.github.jpountz</groupId>
+  <packaging>pom</packaging>
+  <version>1.2.1</version>
+
+  <name>lz4-java</name>
+  <description>lz4-java - A lz4 java implement</description>
+
+  <properties>
+    <junit-version>4.12</junit-version>
+
+    <encoding>UTF-8</encoding>
+    <java-version>1.7</java-version>
+  </properties>
+
+  <modules>
+    <module>xxhash</module>
+    <module>lz4-java-safe</module>
+    <module>lz4-java-unsafe</module>
+  </modules>
+
+  <distributionManagement>
+    <repository>
+      <id>nexus-release</id>
+      <url>http://192.168.40.221:8082/nexus/content/repositories/releases/</url>
+    </repository>
+  </distributionManagement>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Test Scope -->
+      <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>${junit-version}</version>
+        <scope>test</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.5.1</version>
+        <configuration>
+          <encoding>${encoding}</encoding>
+          <source>${java-version}</source>
+          <target>${java-version}</target>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

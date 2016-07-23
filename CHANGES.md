@@ -56,4 +56,4 @@
 
  - lz4 r87
 
- - xxhash r6
+ - net.jpountz.xxhash r6

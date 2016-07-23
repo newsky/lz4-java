@@ -14,10 +14,10 @@ package net.jpountz.xxhash;
  * limitations under the License.
  */
 
+import net.jpountz.util.Native;
+
 import java.lang.reflect.Field;
 import java.util.Random;
-
-import net.jpountz.util.Native;
 
 /**
  * Entry point to get {@link XXHash32} and {@link StreamingXXHash32} instances.
